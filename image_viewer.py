@@ -17,10 +17,10 @@ root.title("dtoxd : Image Viewer")
 
 try:
 	img_name = str(sys.argv[1])
-	conn.send(img_name)
+	conn.send(['p',img_name]) #path
 	pred = conn.recv()
 	print(pred)
-	if pred != 4:
+	if pred == 1:
 		print("Explicit Image")
 		img = ImageTk.PhotoImage(Image.open(default_im))
 	else:
