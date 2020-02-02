@@ -19,7 +19,6 @@ from keras.backend import clear_session
 import cv2 as cv
 import numpy as np
 from numpy.ma import frombuffer
-
 pred_queue=queue.Queue()
 video_frame=queue.Queue()
 global prediction
@@ -34,7 +33,9 @@ def time_extractor():
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
-    cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type test.mp4"
+    cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type "+filename
+    print("test121")
+    # cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type test.mp4"
     s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
     try:
         f = s1.stdout.read()
@@ -54,7 +55,7 @@ def frame_extractor():
     if os.name == 'nt':
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    filename="test.mp4"
+    filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
     print(keyFrameTime)
     cmd = 'ffmpeg -v error -skip_frame nokey -i "{}" -vsync vfr -f image2pipe -vcodec rawvideo -pix_fmt bgr24 -s 300x300 - '.format(filename)
     s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
@@ -122,13 +123,12 @@ def vlc_player():
     s1.kill()
     print(keyFrameTime)
     i=vlc.Instance('--fullscreen')
-    i.get_log_verbosity
+    # i.get_log_verbosity
     p=i.media_player_new()
     m=i.media_new('test.mp4')
     m.get_mrl() 
     p.set_media(m)
-    last_blr=-1
-    count=0
+    count=-1
     print("Inside VLC")
     # global keyFrameTime
     maxCount=len(keyFrameTime)
@@ -139,87 +139,60 @@ def vlc_player():
     if(int(float(keyFrameTime[0]))==0):
         while(len(prediction)<count):
             time.sleep(10)
+            print("Sleeping")
             pass
-        if(int(prediction[count-1])==0):
-            p.play()
+        if(int(prediction[count])==0):
             print("Clear count:",count)
             p.video_set_logo_string(1,"logo.jpg")
             # p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,300)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
-        else:
             p.play()
+        else:
             p.video_set_logo_string(1,"logo.jpg")
             print("blurry count:",count)
-            p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,100)
+            p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,500)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
+            p.play()
         print("1st inncrement",count)
     else:
-        p.play()
         p.video_set_logo_string(1,"logo.jpg")
+        p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
+        p.play()
     while(str(p.get_state())!='State.Ended'):
-        # p.pause()
         curr_tsp=p.get_time()
-        curr_tsp=int(curr_tsp/100)
-        while(len(prediction)<count):
-            pass
-        loop=int(float(keyFrameTime[count-1]))
-        if(int(prediction[count-1])==0):
-            p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
+        curr_tsp=int(curr_tsp/1000)
+        if(len(keyFrameTime)==count):
+            pass 
         else:
-            p.video_set_logo_string(1,"logo.jpg")
-            p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,100)
-            p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
-        while(curr_tsp<=loop):
-            curr_tsp=p.get_time()
-            curr_tsp=int(curr_tsp/1000)
-            p.play()
-        count+=1
-    print("Exited")
-    p.stop()
-    
+            p.pause()
+            while(len(prediction)<count):
+                print("Prediction less than count")
+                pass
+            loop=int(float(keyFrameTime[count]))
+            print("Count, KeyFrameTime length,prediction,curr_tsp,loo[]",count,len(keyFrameTime),prediction[count],curr_tsp,loop)
+            if(int(prediction[count-1])==0):
+                p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
+            else:
+                p.video_set_logo_string(1,"logo.jpg")
+                p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,500)
+                p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
+            while(curr_tsp<=loop):
+                print("Inside count curr_TSP",count,curr_tsp)
+                curr_tsp=p.get_time()
+                curr_tsp=int(curr_tsp/1000)
+                p.play()
+            count+=1
+    # print(keyFrameTime)
+    # print(prediction)
+    # print("Exited")
 
-    # while(str(p.get_state()) !='State.Ended'):
-    #     curr_tsp = p.get_time()
-    #     curr_tsp = int(curr_tsp/1000)
-    #     if(count <= len(keyFrameTime)):
-    #         if(int(float(keyFrameTime[count-1]))>=curr_tsp):
-    #             p.pause()
-    #             # while(len(prediction)<count):
-    #             #     time.sleep(10)
-    #             #     pass
-    #             print("length",len(prediction),"Count",count)
-    #             if(int(prediction[count-1]) is 0):
-    #                 while(curr_tsp>=int(float(keyFrameTime[count-1])) and curr_tsp<=int(float(keyFrameTime[count]))):
-    #                     curr_tsp = p.get_time()
-    #                     curr_tsp = int(curr_tsp/1000)
-    #                     # print("count",count,"Prediction",prediction[count-1])
-    #                     p.play()
-    #                     # print("Inside pred true")
-    #                     # p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,300)
-    #                     p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
-    #             else:
-    #                 while(curr_tsp>=int(float(keyFrameTime[count-1])) and curr_tsp<=int(float(keyFrameTime[count]))):
-    #                     curr_tsp = p.get_time()
-    #                     curr_tsp = int(curr_tsp/1000)           
-    #                     p.play()
-    #                     # print("Inside pred 2")
-    #                     print("Blurry")
-    #                     p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,300)
-    #                     p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
-    #             count+=1
-    #         else:
-    #             p.pause()
-    # print("Premature exit")
-    # p.stop()
-        
-
-
-# t2=threading.Thread(target=time_extractor)
 t4=threading.Thread(target=frame_extractor)
 t1=threading.Thread(target=vlc_player)
 t3=threading.Thread(target=predictor)
 # t2.start()
 t3.start()
 t4.start()
+t3.join()
+
 t1.start()
 
