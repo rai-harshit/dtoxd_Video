@@ -23,24 +23,26 @@ class ServiceInstance(threading.Thread):
         print("New connection from : {}".format(self.listener.last_accepted))
     def run(self):
         while True:
-            path = self.conn.recv()
-            print(path)
+            msg = self.conn.recv()
+            if msg is None:
+                self.conn.close()
+            flag, im_data = msg
             try:
-                im = cv2.imread(path)
-                im = cv2.resize(im,(224,224))
-                im = np.reshape(im,(1,224,224,3))
+                if flag == "p":
+                    im_data = cv2.imread(im_data)
+                    im_data = cv2.resize(im_data,(224,224))
+                im_data = cv2.cvtColor(im_data,cv2.COLOR_BGR2RGB)
+                im_data = np.reshape(im_data,(1,224,224,3))
                 global model
                 global graph
                 global sess
                 with graph.as_default():
                     set_session(sess)
-                    pred = model.predict(im)
+                    pred = model.predict(im_data)[0]
                 print(pred)
-                self.conn.send(np.argmax(pred[0])) 
+                self.conn.send(1 if np.argmax(pred) != 4 else 0) 
             except:
                 print("Issue with the image.")
-            if path == '':
-                self.conn.close()
         self.listener.close()
 
 listener = Listener(address, authkey=b'dtoxd-data-incoming')
