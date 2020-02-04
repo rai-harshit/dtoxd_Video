@@ -111,6 +111,7 @@ def predictor():
 def server_get_prediction():
     x=""
     print("prediction started")
+    count=0
     while(x!="XOXO"):
         x=video_frame.get()
         if(x!="" and x is not None):
@@ -118,7 +119,6 @@ def server_get_prediction():
                 img=None
             else:
                 img = np.fromstring(x, np.uint8).reshape( 300, 300, 3 )
-                print("2")
                 # img = cv.cvtColor(image,cv.COLOR_BGR2RGB)
             # img=cv.imread(image)
             if(len(img)!=0):
@@ -134,14 +134,15 @@ def server_get_prediction():
                     try:
                         conn.send(['f',image])
                         pred = conn.recv()
-                        print(pred)
+                        # print(pred)
+                        count+=1
                         if pred ==0:
                             prediction.append("0")
                         else:
                             prediction.append("1")
-                        print(pred)
                     except:
                         print("Server Issue")
+    print("*************",count)
 
                 # print("Predicting")
     # print(prediction)
@@ -166,6 +167,7 @@ def vlc_player(filename):
         print("Error")
     s1.kill()
     # print(keyFrameTime)
+    print(keyFrameTime)
     i=vlc.Instance('--fullscreen')
     # i.get_log_verbosity
     p=i.media_player_new()
