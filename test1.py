@@ -65,6 +65,7 @@ def frame_extractor(filename):
             f = s1.stdout.read(150528)
             if(len(f)!=0):
                 frame = frombuffer(f,dtype=np.uint8).reshape((1,224,224,3))
+
                 video_frame.put(frame)
             else:
                 break
@@ -243,4 +244,3 @@ if __name__ == "__main__":
     t4.start()
     t3.join()
     t1.start()
-    
