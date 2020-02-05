@@ -14,10 +14,9 @@ import time
 import random
 import os
 import time
-import keras
 import re
-from keras.models import load_model
-from keras.backend import clear_session
+from tensorflow.keras.models import load_model
+from tensorflow.keras.backend import clear_session
 import cv2 as cv
 import numpy as np
 from numpy.ma import frombuffer
@@ -59,13 +58,13 @@ def frame_extractor(filename):
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     # filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
     print(keyFrameTime)
-    cmd = 'ffmpeg -v error -skip_frame nokey -i "{}" -vsync vfr -f image2pipe -vcodec rawvideo -pix_fmt bgr24 -s 300x300 - '.format(filename)
+    cmd = 'ffmpeg -v error -skip_frame nokey -i "{}" -vsync vfr -f image2pipe -vcodec rawvideo -pix_fmt bgr24 -s 224x224 - '.format(filename)
     s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
     while True:
         try:
-            f = s1.stdout.read(270000)
+            f = s1.stdout.read(150528)
             if(len(f)!=0):
-                frame = frombuffer(f,dtype=np.uint8).reshape((1,300,300,3))
+                frame = frombuffer(f,dtype=np.uint8).reshape((1,224,224,3))
                 video_frame.put(frame)
             else:
                 break
@@ -88,16 +87,16 @@ def predictor():
             if(x=="XOXO"):
                 img=None
             else:
-                img = np.fromstring(x, np.uint8).reshape( 300, 300, 3 )
+                img = np.fromstring(x, np.uint8).reshape( 224, 224, 3 )
                 # img = cv.cvtColor(image,cv.COLOR_BGR2RGB)
             # img=cv.imread(image)
             if(img is not None):
                 height, width = img.shape[:2]
                 if(height>48 and width>48):
-                    img=cv.resize(img,(300,300))
-                    img=cv.resize(img,(300,300))
+                    img=cv.resize(img,(224,224))
+                    img=cv.resize(img,(224,224))
                     img=np.array(img)
-                    image = np.reshape(img,(1,300,300,3))
+                    image = np.reshape(img,(1,224,224,3))
                     l=model.predict(image)
                     global prediction
                     if(l[0][0]>l[0][1]):
@@ -118,16 +117,16 @@ def server_get_prediction():
             if(x=="XOXO"):
                 img=None
             else:
-                img = np.fromstring(x, np.uint8).reshape( 300, 300, 3 )
+                img = np.fromstring(x, np.uint8).reshape( 224, 224, 3 )
                 # img = cv.cvtColor(image,cv.COLOR_BGR2RGB)
             # img=cv.imread(image)
             if(len(img)!=0):
                 height, width = img.shape[:2]
                 if(height>48 and width>48):
-                    img=cv.resize(img,(300,300))
-                    img=cv.resize(img,(300,300))
+                    img=cv.resize(img,(224,224))
+                    img=cv.resize(img,(224,224))
                     img=np.array(img)
-                    image = np.reshape(img,(1,300,300,3))
+                    image = np.reshape(img,(1,224,224,3))
                     address = ('localhost', 6969)
                     conn = Client(address, authkey=b'dtoxd-data-incoming')
                     print("Connection created")
@@ -190,7 +189,7 @@ def vlc_player(filename):
         if(int(prediction[count])==0):
             # print("Clear count:",count)
             p.video_set_logo_string(1,"logo.jpg")
-            # p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,300)
+            # p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,224)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
             p.play()
         else:
