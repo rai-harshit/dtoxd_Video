@@ -18,37 +18,21 @@ import re
 from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import clear_session
 import cv2 as cv
+from subprocess import Popen
+from subprocess import PIPE
 import numpy as np
 from numpy.ma import frombuffer
+from multiprocessing import Process
 pred_queue=queue.Queue()
 video_frame=queue.Queue()
 global prediction
 prediction=[]
 global keyFrameTime
-keyFrameTime=""
+keyFrameTime=[]
 global currentPredTime
 currentPredTime=0
-def time_extractor(filename):
-    startupinfo = None
-    if os.name == 'nt':
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    # filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
-    cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type "+filename
-    # print("test121")
-    # cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type test.mp4"
-    s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
-    try:
-        f = s1.stdout.read()
-        f=f.decode('ascii')
-        f=re.findall(r'\d+\.\d+',f)
-        global keyFrameTime
-        keyFrameTime=f
-    except ValueError as e:
-        print("Error")
-    filename="test.mp4"
-    s1.kill()
-    # print(keyFrameTime)
+global start_vlc
+start_vlc=0
 
 
 def frame_extractor(filename):
@@ -56,8 +40,6 @@ def frame_extractor(filename):
     if os.name == 'nt':
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    # filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
-    print(keyFrameTime)
     cmd = 'ffmpeg -v error -skip_frame nokey -i "{}" -vsync vfr -f image2pipe -vcodec rawvideo -pix_fmt bgr24 -s 224x224 - '.format(filename)
     s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
     while True:
@@ -72,41 +54,8 @@ def frame_extractor(filename):
         except ValueError as ve:
             print(ve)
             break
-    # print("done frame extraction")
     video_frame.put("XOXO")
-    # print("pipe size",video_frame.qsize())
 
-
-def predictor():
-    clear_session()
-    model=load_model("model.h5")
-    x=""
-    print("prediction started")
-    while(x!="XOXO"):
-        x=video_frame.get()
-        if(x!="" and x is not None):
-            if(x=="XOXO"):
-                img=None
-            else:
-                img = np.fromstring(x, np.uint8).reshape( 224, 224, 3 )
-                # img = cv.cvtColor(image,cv.COLOR_BGR2RGB)
-            # img=cv.imread(image)
-            if(img is not None):
-                height, width = img.shape[:2]
-                if(height>48 and width>48):
-                    img=cv.resize(img,(224,224))
-                    img=cv.resize(img,(224,224))
-                    img=np.array(img)
-                    image = np.reshape(img,(1,224,224,3))
-                    l=model.predict(image)
-                    global prediction
-                    if(l[0][0]>l[0][1]):
-                        prediction.append("1")
-                    else:
-                        prediction.append("0")
-                # print("Predicting")
-    # print(prediction)
-                    
 
 def server_get_prediction():
     x=""
@@ -142,32 +91,29 @@ def server_get_prediction():
                             prediction.append("1")
                     except:
                         print("Server Issue")
+                global start_vlc
+                if(len(prediction)>=20 and start_vlc==0):
+                    time.sleep(10)
     print("*************",count)
 
-                # print("Predicting")
-    # print(prediction)
 
+def keyFrameTime_Exctraction(filename):
+    command = "ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type {}".format(filename)
+    pipe = Popen(command,shell=True,stdout=PIPE,stderr=PIPE)    
+    while True:         
+        line = pipe.stdout.readline()
+        if line: 
+            line1=str(line)
+            numbers = re.findall('\d*\.?\d+',line1)            
+            if(len(numbers)==1):
+                global keyFrameTime
+                keyFrameTime.append(numbers[0])
+        else:
+            break
 
         
 def vlc_player(filename):
-    startupinfo = None
-    if os.name == 'nt':
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    # filename="C:\\Users\\vishw\\Documents\\dtoxd\\dtoxd_Video\\test.mp4"
-    cmd ="ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type {}".format(filename)
-    s1 = subprocess.Popen(cmd, stdout=subprocess.PIPE,stdin=subprocess.DEVNULL,startupinfo=startupinfo)
-    try:
-        f = s1.stdout.read()
-        f=f.decode('ascii')
-        f=re.findall(r'\d+\.\d+',f)
-        global keyFrameTime
-        keyFrameTime=f
-    except ValueError as e:
-        print("Error")
-    s1.kill()
-    # print(keyFrameTime)
-    print(keyFrameTime)
+    global keyFrameTime
     i=vlc.Instance('--fullscreen')
     # i.get_log_verbosity
     p=i.media_player_new()
@@ -175,18 +121,22 @@ def vlc_player(filename):
     m.get_mrl() 
     p.set_media(m)
     count=-1
-    # print("Inside VLC")
-    # global keyFrameTime
     maxCount=len(keyFrameTime)
     while(len(keyFrameTime)<1):
-        pass
+        time.sleep(1)
     global prediction
+    if(len(keyFrameTime)>=20):
+        while(len(prediction)<20):
+            time.sleep(1)
+    else:
+        while(len(prediction)<len(keyFrameTime)):
+            time.sleep(1)
+
     count+=1
     if(int(float(keyFrameTime[0]))==0):
         while(len(prediction)<count):
             time.sleep(10)
             # print("Sleeping")
-            pass
         if(int(prediction[count])==0):
             # print("Clear count:",count)
             p.video_set_logo_string(1,"logo.jpg")
@@ -204,6 +154,8 @@ def vlc_player(filename):
         p.video_set_logo_string(1,"logo.jpg")
         p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
         p.play()
+    global start_vlc
+    start_vlc=1
     while(str(p.get_state())!='State.Ended'):
         curr_tsp=p.get_time()
         curr_tsp=int(curr_tsp/1000)
@@ -228,19 +180,20 @@ def vlc_player(filename):
                 curr_tsp=int(curr_tsp/1000)
                 p.play()
             count+=1
-    # print(keyFrameTime)
-    # print(prediction)
-    # print("Exited")
+
 
 
 
 if __name__ == "__main__":
     filename=sys.argv[1]
+    t0=threading.Thread(target=keyFrameTime_Exctraction,args=(filename,))
     t4=threading.Thread(target=frame_extractor,args=(filename,))
     t1=threading.Thread(target=vlc_player,args=(filename,))
     t3=threading.Thread(target=server_get_prediction)
-    # t2.start()
+    t0.start()
+    time.sleep(2)
     t3.start()
     t4.start()
-    t3.join()
     t1.start()
+
+    
