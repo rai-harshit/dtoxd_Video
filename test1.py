@@ -47,7 +47,6 @@ def frame_extractor(filename):
             f = s1.stdout.read(150528)
             if(len(f)!=0):
                 frame = frombuffer(f,dtype=np.uint8).reshape((1,224,224,3))
-
                 video_frame.put(frame)
             else:
                 break
@@ -98,11 +97,19 @@ def server_get_prediction():
 
 
 def keyFrameTime_Exctraction(filename):
-    command = "ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type {}".format(filename)
-    pipe = Popen(command,shell=True,stdout=PIPE,stderr=PIPE)    
-    while True:         
+    # if(filename.endswith('.m4v')):
+    #     print("endswith")
+    # command = "ffprobe -select_streams v -skip_frame nokey -show_frames -show_entries frame=pkt_pts_time,pict_type {}".format(filename)
+    # else:
+    command="ffprobe -loglevel error -skip_frame nokey -select_streams v:0 -show_entries frame=pkt_pts_time -of csv=print_section=0 {}".format(filename)
+    pipe = Popen(command,shell=True,stdout=PIPE,stderr=PIPE)
+    print("pipe created")
+    while True:    
+        print("Inside While")     
         line = pipe.stdout.readline()
+        print(line)
         if line: 
+            print(line)
             line1=str(line)
             numbers = re.findall('\d*\.?\d+',line1)            
             if(len(numbers)==1):
