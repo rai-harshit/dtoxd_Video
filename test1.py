@@ -14,6 +14,8 @@ import time
 import random
 import os
 import time
+from PIL import ImageFilter
+from PIL import Image
 import re
 from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import clear_session
@@ -31,6 +33,8 @@ global keyFrameTime
 keyFrameTime=[]
 global currentPredTime
 currentPredTime=0
+global KeyFrame
+KeyFrame=[]
 global start_vlc
 start_vlc=0
 
@@ -48,6 +52,8 @@ def frame_extractor(filename):
             if(len(f)!=0):
                 frame = frombuffer(f,dtype=np.uint8).reshape((1,224,224,3))
                 video_frame.put(frame)
+                global KeyFrame
+                KeyFrame.append(frame)
             else:
                 break
         except ValueError as ve:
@@ -92,7 +98,7 @@ def server_get_prediction():
                         print("Server Issue")
                 global start_vlc
                 if(len(prediction)>=20 and start_vlc==0):
-                    time.sleep(10)
+                    time.sleep(2)
     print("*************",count)
 
 
@@ -127,11 +133,13 @@ def vlc_player(filename):
     m=i.media_new(filename)
     m.get_mrl() 
     p.set_media(m)
+    print("width height",p.video_get_size)
     count=-1
     maxCount=len(keyFrameTime)
     while(len(keyFrameTime)<1):
         time.sleep(1)
     global prediction
+    global KeyFrame
     if(len(keyFrameTime)>=20):
         while(len(prediction)<20):
             time.sleep(1)
@@ -146,19 +154,53 @@ def vlc_player(filename):
             # print("Sleeping")
         if(int(prediction[count])==0):
             # print("Clear count:",count)
-            p.video_set_logo_string(1,"logo.jpg")
+            im=KeyFrame[count]
+            im = (im.squeeze()*255).astype(np.uint8)
+            im = Image.fromarray(im,'RGB')
+            # im.show()
+            im2 = im.filter(ImageFilter.GaussianBlur(radius = 10))
+            im2=im2.resize((1920,1080))
+            im2.save("blur.jpg")
+            p.video_set_logo_string(1,"blur.jpg")
+            # p.video_set_logo_string(1,"logo.jpg")
             # p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,224)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
             p.play()
         else:
-            p.video_set_logo_string(1,"logo.jpg")
+            # p.video_set_logo_string(1,"logo.jpg")
+            im=KeyFrame[count]
+            im = (im.squeeze()*255).astype(np.uint8)
+            im = Image.fromarray(im,'RGB')
+            # im.show()
+            try:
+                im=im.convert("RGB")
+                im2 = im.filter(ImageFilter.GaussianBlur(radius = 10)) 
+                im2=im2.resize((1920,1080))
+                im2.save("blur.jpg")
+                p.video_set_logo_string(1,"blur.jpg")
+                # p.video_set_logo_string(1,im2)
+            except:
+                # print(im2.mode)
+                p.video_set_logo_string(1,"blur.jpg")
+                # p.video_set_logo_string(1,im2)
+                # p.video_set_logo_string(1,"logo.jpg")
             # print("blurry count:",count)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,500)
             p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
             p.play()
-        # print("1st inncrement",count)
+        print("1st inncrement",count)
     else:
-        p.video_set_logo_string(1,"logo.jpg")
+        # p.video_set_logo_string(1,"logo.jpg")
+        im=KeyFrame[count]
+        im = (im.squeeze()*255).astype(np.uint8)
+        im = Image.fromarray(im,'RGB')
+        # im.show()
+        im2 = im.filter(ImageFilter.GaussianBlur(radius = 10))
+        im2=im2.resize((1920,1080))
+        im2.save("blur.jpg")
+        p.video_set_logo_string(1,"blur.jpg") 
+        os.remove('blur.jpg')
+        # p.video_set_logo_string(1,im2)
         p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
         p.play()
     global start_vlc
@@ -176,17 +218,56 @@ def vlc_player(filename):
             loop=int(float(keyFrameTime[count]))
             # print("Count, KeyFrameTime length,prediction,curr_tsp,loo[]",count,len(keyFrameTime),prediction[count],curr_tsp,loop)
             if(int(prediction[count-1])==0):
-                p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
+                im=KeyFrame[count]
+                im = (im.squeeze()*255).astype(np.uint8)
+                im = Image.fromarray(im,'RGB')
+                # im.show()
+                try:
+                    im=im.convert("RGB")
+                    im2 = im.filter(ImageFilter.GaussianBlur(radius = 10)) 
+                    # p.video_set_logo_string(1,im2)
+                    im2=im2.save("blur.jpg")
+                    im2=im2.resize((1920,1080))
+                    p.video_set_logo_string(1,'blur.jpg')
+                    os.remove('blur.jpg')
+                    p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
+                except:
+                    # p.video_set_logo_string(1,im2)
+                    # im2.save("blur.jpg")
+                    p.video_set_logo_string(1,"blur.jpg")
+                    os.remove('blur.jpg')
+                    # p.video_set_logo_string(1,"logo.jpg")
+                    p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,0)
             else:
-                p.video_set_logo_string(1,"logo.jpg")
-                p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,500)
-                p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
+                im=KeyFrame[count]
+                im = (im.squeeze()*255).astype(np.uint8)
+                im = Image.fromarray(im,'RGB')
+                # im.show()
+                try:
+                    im=im.convert("RGB")
+                    im2 = im.filter(ImageFilter.GaussianBlur(radius = 10)) 
+                    im2=im2.resize((1920,1080))
+                    # p.video_set_logo_string(1,im2)
+                    im2.save("blur.jpg")
+                    p.video_set_logo_string(1,"blur.jpg")
+                    # os.remove('blur.jpg')
+                    p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
+                except:
+                    # p.video_set_logo_string(1,im2)
+                    # im2.save("blur.jpg")
+                    p.video_set_logo_string(1,"blur.jpg")
+                    # p.video_set_logo_string(1,"logo.jpg")
+                    # p.video_set_logo_string(1,"logo.jpg")
+                    p.video_set_logo_int(vlc.VideoLogoOption.logo_opacity,500)
+                    p.video_set_logo_int(vlc.VideoLogoOption.logo_enable,1)
             while(curr_tsp<=loop):
                 # print("Inside count curr_TSP",count,curr_tsp)
                 curr_tsp=p.get_time()
                 curr_tsp=int(curr_tsp/1000)
                 p.play()
+            # os.remove('blur.jpg')
             count+=1
+    p.stop()
 
 
 
